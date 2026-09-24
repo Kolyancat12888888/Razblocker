@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyTitle>HFL Razbloker Enterprise</AssemblyTitle>
+    <AssemblyName>HFL_Razbloker</AssemblyName>
+    <AssemblyDescription>Autonomous High-Performance Unblocker &amp; VPN Client</AssemblyDescription>
+    <Company>HFL Enterprise</Company>
+    <Product>HFL Razbloker</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="HFL.Core\HFL.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
