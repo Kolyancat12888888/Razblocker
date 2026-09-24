@@ -54,13 +54,22 @@ namespace HFL.Client.Services
 
             if (!string.IsNullOrEmpty(dohUrl))
             {
-                Log($"🔒 Включение прозрачного перехвата DNS (Свой сервер: {dohUrl}). Домены .local/.internal активны.");
-                _transparentDns.Start(dohUrl);
-                _dns.EnableTransparentDns();
+                Log($"🔒 Включение перехвата DNS (Сервер: {dohUrl}). Домены .local/.internal активны.");
+                var (divertOk, divertErr) = _transparentDns.Start(dohUrl);
+                if (divertOk)
+                {
+                    Log("🛡️ Ядро WinDivert успешно перехватывает DNS-трафик на лету.");
+                }
+                else
+                {
+                    Log($"⚠️ WinDivert: {divertErr}. Активирован прямой системный DNS шлюз 31.77.8.9...");
+                }
+
+                _dns.EnableDns("31.77.8.9");
             }
 
             SetStrategy("HFL Native DNS Mode");
-            Log("✅ HFL DNS активен. Запросы .local и .internal прозрачно направляются на сервер 31.77.8.9.");
+            Log("✅ HFL DNS активен. Запросы .local и .internal направляются на сервер 31.77.8.9.");
 
             _ = MonitorHealthLoopAsync(token);
         }
@@ -137,7 +146,7 @@ namespace HFL.Client.Services
 
             _transparentDns.Stop();
             _zapret.Stop();
-            _dns.DisableTransparentDns();
+            _dns.DisableDns();
 
             _isRunning = false;
             ActiveStrategyName = "Отключено";

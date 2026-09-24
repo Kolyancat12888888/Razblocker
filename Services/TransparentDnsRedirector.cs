@@ -83,38 +83,46 @@ namespace HFL.Client.Services
             _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
         }
 
-        public bool Start(string serverDohUrl)
+        public (bool Success, string? Error) Start(string serverDohUrl)
         {
             Stop();
 
             if (string.IsNullOrWhiteSpace(serverDohUrl))
-                return false;
+                return (false, "URL DoH пуст");
 
             try
             {
-                // Ensure WinDivert.dll can be loaded by setting DLL directory
+                // Ensure WinDivert driver files are in app root for the kernel driver service
                 string binDir = Path.Combine(AppContext.BaseDirectory, "Assets", "bin");
                 if (Directory.Exists(binDir))
                 {
+                    string targetDll = Path.Combine(AppContext.BaseDirectory, "WinDivert.dll");
+                    string targetSys = Path.Combine(AppContext.BaseDirectory, "WinDivert64.sys");
+                    string srcDll = Path.Combine(binDir, "WinDivert.dll");
+                    string srcSys = Path.Combine(binDir, "WinDivert64.sys");
+
+                    if (!File.Exists(targetDll) && File.Exists(srcDll)) File.Copy(srcDll, targetDll, true);
+                    if (!File.Exists(targetSys) && File.Exists(srcSys)) File.Copy(srcSys, targetSys, true);
+
                     SetDllDirectory(binDir);
                 }
 
                 // Intercept all outgoing IPv4 DNS queries (UDP dst port 53)
-                // Adapters in Windows settings remain 100% unchanged!
                 _divertHandle = WinDivertOpen("outbound and !loopback and ip and udp.DstPort == 53", WINDIVERT_LAYER_NETWORK, 100, 0);
                 if (_divertHandle == IntPtr.Zero || _divertHandle == new IntPtr(-1))
                 {
+                    int err = Marshal.GetLastWin32Error();
                     _divertHandle = IntPtr.Zero;
-                    return false;
+                    return (false, $"WinDivertOpen error {err} (нужен запуск от Администратора)");
                 }
 
                 _cts = new CancellationTokenSource();
                 Task.Factory.StartNew(() => InterceptLoop(serverDohUrl, _cts.Token), TaskCreationOptions.LongRunning);
-                return true;
+                return (true, null);
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -131,8 +139,6 @@ namespace HFL.Client.Services
                     continue;
                 }
 
-                // Parse IPv4 + UDP header
-                // IPv4 Header is minimum 20 bytes. UDP Header is 8 bytes.
                 if (readLen < 28) continue;
 
                 int ipHeaderLen = (packet[0] & 0x0F) * 4;
@@ -145,7 +151,6 @@ namespace HFL.Client.Services
                 byte[] dnsQuery = new byte[dnsLength];
                 Array.Copy(packet, udpPayloadOffset, dnsQuery, 0, dnsLength);
 
-                // Preserve original headers to craft the exact response back to the application
                 byte[] origIpHeader = new byte[ipHeaderLen];
                 Array.Copy(packet, 0, origIpHeader, 0, ipHeaderLen);
                 byte[] origUdpHeader = new byte[8];
@@ -180,17 +185,17 @@ namespace HFL.Client.Services
             int totalLen = origIp.Length + 8 + dnsResponse.Length;
             byte[] respPacket = new byte[totalLen];
 
-            // 1. Swap Source IP (bytes 12..15) and Destination IP (bytes 16..19)
+            // 1. Swap Source IP and Destination IP
             Array.Copy(origIp, 0, respPacket, 0, origIp.Length);
             Array.Copy(origIp, 12, respPacket, 16, 4); // Dst = Orig Src
             Array.Copy(origIp, 16, respPacket, 12, 4); // Src = Orig Dst
 
-            // Set Total Length in IPv4 Header
+            // Total Length in IPv4 Header
             respPacket[2] = (byte)((totalLen >> 8) & 0xFF);
             respPacket[3] = (byte)(totalLen & 0xFF);
             respPacket[8] = 64; // TTL
 
-            // 2. Swap Source Port (0..1) and Destination Port (2..3) in UDP Header
+            // 2. Swap Source Port and Destination Port in UDP Header
             int udpOffset = origIp.Length;
             respPacket[udpOffset + 0] = origUdp[2];
             respPacket[udpOffset + 1] = origUdp[3];
@@ -201,7 +206,8 @@ namespace HFL.Client.Services
             int udpLen = 8 + dnsResponse.Length;
             respPacket[udpOffset + 4] = (byte)((udpLen >> 8) & 0xFF);
             respPacket[udpOffset + 5] = (byte)(udpLen & 0xFF);
-            // Set Checksum fields to 0 before calculating
+
+            // Zero Checksum fields before calculating
             respPacket[10] = 0;
             respPacket[11] = 0;
             respPacket[udpOffset + 6] = 0;
