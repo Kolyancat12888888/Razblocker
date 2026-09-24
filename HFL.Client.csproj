@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="HFL.Core\HFL.Core.csproj" />
+    <ProjectReference Include="..\HFL.Core\HFL.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

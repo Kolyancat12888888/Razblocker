@@ -12,6 +12,7 @@ namespace HFL.Core.Models
         public DateTime? ActivatedAt { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public string? Hwid { get; set; }
+        public string? LastSeenIp { get; set; }
         public bool IsActive { get; set; } = true;
         public string? Note { get; set; }
         public DateTime? LastSeenAt { get; set; }

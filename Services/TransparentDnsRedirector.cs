@@ -201,16 +201,19 @@ namespace HFL.Client.Services
             int udpLen = 8 + dnsResponse.Length;
             respPacket[udpOffset + 4] = (byte)((udpLen >> 8) & 0xFF);
             respPacket[udpOffset + 5] = (byte)(udpLen & 0xFF);
-            respPacket[udpOffset + 6] = 0; // Checksum (calculated by helper)
+            // Set Checksum fields to 0 before calculating
+            respPacket[10] = 0;
+            respPacket[11] = 0;
+            respPacket[udpOffset + 6] = 0;
             respPacket[udpOffset + 7] = 0;
 
             // 3. Append DNS payload
             Array.Copy(dnsResponse, 0, respPacket, udpOffset + 8, dnsResponse.Length);
 
-            // 4. Set Address struct for inbound injection
+            // 4. Set Address struct for inbound injection (outbound bit must be 0)
             var respAddr = new WINDIVERT_ADDRESS();
             respAddr.Layer = WINDIVERT_LAYER_NETWORK;
-            respAddr.Flags = 1; // Inbound direction
+            respAddr.Flags = 0; // 0 = Inbound
             respAddr.Network = origAddr.Network;
 
             // Calculate IPv4 and UDP Checksums
