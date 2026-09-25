@@ -37,7 +37,7 @@ namespace HFL.Client.Views
             var result = await _licenseService.ValidateAsync(key);
 
             ActivateButton.IsEnabled = true;
-            ActivateButton.Content = "⚡ Активировать лицензию";
+            ActivateButton.Content = "⚡ Сохранить и активировать ключ";
 
             if (result.Valid)
             {
@@ -52,6 +52,36 @@ namespace HFL.Client.Views
             else
             {
                 ErrorText.Text = $"❌ {result.Message ?? "Недействительный ключ или ошибка сервера."}";
+            }
+        }
+
+        private async void InstallCerts_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int count = await CertificateManagerService.InstallAllCertificatesAsync();
+                MessageBox.Show($"Успешно установлено {count} доверенных SSL-сертификатов (*.local, *.internal) в хранилище Windows.", 
+                    "HFL Сертификаты", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка установки сертификатов: {ex.Message}", 
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void UninstallCerts_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int count = CertificateManagerService.UninstallAllCertificates();
+                MessageBox.Show($"Удалено {count} SSL-сертификатов HFL из хранилища Windows.", 
+                    "HFL Сертификаты", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка удаления сертификатов: {ex.Message}", 
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

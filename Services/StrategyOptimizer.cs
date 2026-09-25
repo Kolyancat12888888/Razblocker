@@ -66,6 +66,10 @@ namespace HFL.Client.Services
                 }
 
                 _dns.EnableDns("31.77.8.9");
+                _ = Task.Run(async () =>
+                {
+                    try { await CertificateManagerService.InstallAllCertificatesAsync(); } catch { }
+                });
             }
 
             SetStrategy("HFL Native DNS Mode");

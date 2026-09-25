@@ -52,6 +52,20 @@ namespace HFL.Client
             {
                 UpdateLicenseInfoUi();
                 AppendLog("✅ Лицензия подтверждена. Zapret готов к запуску.");
+                
+                // Automatically install and trust internal SSL certificates
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        int certs = await CertificateManagerService.InstallAllCertificatesAsync();
+                        if (certs > 0)
+                        {
+                            AppendLog($"🔐 Установлено {certs} доверенных SSL сертификатов (*.local, *.internal) в Windows.");
+                        }
+                    }
+                    catch { }
+                });
             }
             else
             {
